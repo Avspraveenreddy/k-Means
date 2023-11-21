@@ -1,0 +1,263 @@
+---
+title: "FML Assignment 4"
+author: "Praveen Reddy Arimanda"
+date: "2023-11-19"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+#Dataset Import
+pharma_data <- read.csv(file = "C:/Users/Praveen/Downloads/Pharmaceuticals.csv")
+head(pharma_data) #Displaying the data
+```
+```{r}
+#Displaying the structure of the dataset
+str(pharma_data)
+```
+```{r}
+#Summary of the dataset
+summary(pharma_data)
+```
+```{r}
+#Counting number of missing values column wise
+colMeans(is.na(pharma_data))
+#No missing values in the dataset
+```
+```{r}
+#Question-1
+# Selecting columns 1, 3 to 11 from the 'pharma' dataset
+pharma_data_numerical <- pharma_data[, c(1, 3:11)]
+
+# Setting row names of 'pharma_data_numerical' to the values in the first column
+row.names(pharma_data_numerical) <- pharma_data_numerical[, 1]
+
+# Removing the first column from 'pharma_data_numerical'
+pharma_data_numerical <- pharma_data_numerical[, -1]
+
+# Displaying the head of the modified 'pharma_data_numerical' dataset
+head(pharma_data_numerical)
+
+```
+```{r}
+#Displaying the structure of the Pharma Numerical Dataset
+str(pharma_data_numerical)
+```
+```{r}
+#install.packages("pander")
+library(pander)
+set.seed(150)
+
+#Normalizing the data
+pharma_normalized_data <- scale(pharma_data_numerical)
+
+# Display the top 6 observations from pharma_Norm
+head(pharma_normalized_data)
+
+```
+```{r}
+#install.packages("factoextra")
+library(factoextra)
+#Default: Euclidean distance
+pharma_euc_distance <- get_dist(pharma_normalized_data)
+fviz_dist(pharma_euc_distance, order = TRUE, show_labels = TRUE)
+
+```
+```{r}
+countries <- pharma_data[,c(1,2)] 
+unique(countries)
+```
+```{r}
+# The color intensity in the heatmap varies with the distance between two observations, 
+#specifically representing distances between different pharmaceutical companies. The diagonal 
+#elements are colored red, indicating a distance of zero, while dark blue hues signify a distance of 6, suggesting a considerable spatial separation between the companies.
+# Install ggcorrplot if not already installed
+#install.packages("ggcorrplot")
+
+# Load the ggcorrplot package
+library(ggcorrplot)
+correlation_plot<-cor(pharma_normalized_data)
+ggcorrplot(correlation_plot,outline.color = "grey50",lab = TRUE,hc.order = TRUE,type = "full")
+# Return on Assets (ROA) shows a clear positive connection with Market Capitalization (Market_cap), 
+#Profit Margin, and Return on Equity (ROE). In simpler terms, when ROA goes up, it's likely that Market_cap,
+#Profit Margin, and ROE will also increase. Conversely, if ROA decreases, we can expect decreases in Market_cap,
+#Profit Margin, and ROE.
+```
+```{r}
+#Determining the number of clusters to group similar countries together involves two 
+#primary techniques: the Elbow chart and the #Silhouette Method. Both methods are utilized 
+#to ascertain the optimal value of K, which represents the number of clusters.
+#install.packages("cowplot")
+library(cowplot)
+library(gridExtra)
+Elbowmethod <- fviz_nbclust(pharma_normalized_data, kmeans, method = "wss")
+Silhouette <- fviz_nbclust(pharma_normalized_data, kmeans, method = "silhouette")
+plot_grid(Elbowmethod, Silhouette, nrow = 1)
+#The Elbow method suggests that the optimal number of clusters, k, is 6, while the Silhouette
+#method indicates a value of k = 5.
+```
+```{r}
+#Now trying to identify the best-suited value for k, as the Elbow method suggests k = 2 or 6, 
+#and the Silhouette method points #towards k = 5. I will explore values for k across the range of 2 to 6.
+k2<-kmeans(pharma_normalized_data,centers =2,nstart=25)
+k3<-kmeans(pharma_normalized_data,centers =3,nstart=25)
+k4<-kmeans(pharma_normalized_data,centers =4,nstart=25)
+k5<-kmeans(pharma_normalized_data,centers =5,nstart=25)
+k6<-kmeans(pharma_normalized_data,centers =6,nstart=25)
+p1<-fviz_cluster(k2,geom = "point", data=pharma_normalized_data)+ggtitle("k=2")
+p2<-fviz_cluster(k3,geom = "point", data=pharma_normalized_data)+ggtitle("k=3")
+p3<-fviz_cluster(k4,geom = "point", data=pharma_normalized_data)+ggtitle("k=4")
+p4<-fviz_cluster(k5,geom = "point", data=pharma_normalized_data)+ggtitle("k=5")
+p5<-fviz_cluster(k6,geom = "point", data=pharma_normalized_data)+ggtitle("k=6")
+grid.arrange(p1,p2,p3,p4,p5)#The value 5 has no overlap and also creating 5 different clusters
+
+```
+```{r}
+#Since value of K = 5 is making more sense will create 5 clusters for our analysis
+pharma_data_Kmeans <- kmeans(pharma_normalized_data, centers = 5, nstart = 25)
+pandoc.table(pharma_data_Kmeans$centers,style="grid", split.tables = Inf)
+
+```
+
+```{r}
+#Size of the Cluster
+pharma_data_Kmeans$size
+```
+```{r}
+pharma_data_Kmeans$withinss
+pharma_data_Kmeans$cluster[16]
+```
+```{r}
+fviz_cluster(pharma_data_Kmeans, data = pharma_normalized_data)
+```
+```{r}
+#Question-2
+#Interpretaion:
+# The pharmaceutical dataset underwent k-means clustering, categorizing data points into 5 clusters
+#based on similarities. Notably, Cluster 3 emerged as the largest, indicating companies within this
+#cluster shared similar financial characteristics. Conversely, Cluster 2 comprised only two countries,
+#signifying distinctive traits setting them apart. Cluster 5 exhibited superior financial performance
+#with elevated asset turnover, ROA, and ROE, while Cluster 2 displayed a higher P/E ratio.
+# 
+# Assessing the homogeneity of clusters using the within-cluster sum of squared distances (WSSD) revealed 
+#that Cluster 2 demonstrated less uniformity than Cluster 1. This suggests a broader range of characteristics 
+#among countries in Cluster 2 compared to those in Cluster 1. These findings offer valuable insights into patterns and trends #within the pharmaceutical industry, shedding light on distinctions in financial performance among countries
+#and companies.
+# 
+# In summary, employing k-means clustering facilitated the delineation of distinct clusters, enabling
+#the identification of both similarities and differences within the pharmaceutical sector. These insights
+#can inform strategic development, allowing targeted approaches for specific clusters and ultimately
+#enhancing the overall financial performance of companies within the industry.
+
+```
+
+```{r}
+#Now Creating a dataframe with cluster centers
+Centroid <- data.frame(cluster = 1:5, k5$centers)
+Centroid_reshape <- tidyr::gather(Centroid, "Column", "Center", -cluster)
+head(Centroid_reshape)
+```
+```{r}
+# Load the ggplot2 package
+library(ggplot2)
+# Create a scatterplot of cluster centers
+ggplot(Centroid_reshape, aes(x = Column, y = Center, color = factor(cluster))) +
+geom_point() +
+geom_line(aes(group = factor(cluster))) +
+labs(x = "Columns", y = "Centers", color = "Cluster") +
+ggtitle("Cluster Centers Plot")
+
+```
+```{r}
+# Load the ggplot2 package
+library(ggplot2)
+# Create a heatmap of cluster centers
+ggplot(Centroid_reshape, aes(x = Column, y = factor(cluster), fill = Center)) +
+geom_tile() +
+scale_fill_gradient(low = "white", high = "steelblue") +
+labs(x = "Columns", y = "Cluster", fill = "Centers") +
+ggtitle("Cluster Centers Heatmap")
+```
+
+```{r}
+#Question-3
+#Install dplyr if not already installed
+#install.packages("dplyr")
+
+# Load the dplyr package
+library(dplyr)
+pharma_patterns <-  pharma_data %>% select(c(12,13,14)) %>% mutate(Cluster = pharma_data_Kmeans$cluster)
+print(pharma_patterns) 
+#The other three categories to be considered are Stock Exchange, Location, and Median Recommendation.
+```
+```{r}
+#To visualize the distribution of businesses grouped by clusters and to identify any trends in the data,
+#utilizing bar charts
+
+Median_Recom <- ggplot(pharma_patterns, mapping = aes(factor(Cluster), fill=Median_Recommendation)) +
+  geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+
+Location_0 <- ggplot(pharma_patterns, mapping = aes(factor(Cluster), fill=Location)) + geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+
+Exchange_0 <- ggplot(pharma_patterns, mapping = aes(factor(Cluster), fill=Exchange)) +
+geom_bar(position = 'dodge') + labs(x='Clusters', y='Frequence')
+plot_grid(Median_Recom, Location_0, Exchange_0)
+```
+```{r}
+#The clustering analysis reveals that companies within each cluster share common characteristics related 
+#to their #Median_Recommendation, Location, and Exchange.
+
+#In Cluster -1, the predominant companies are based in the United States, listed on the 
+#New York Stock Exchange (NYSE). Their #stock is advised to be held, reflecting stability and relatively
+#low-risk investment.
+
+#Cluster -2 comprises a blend of American and Canadian companies listed on the NYSE, with a recommendation
+#leaning towards #moderate buy or hold. This suggests they possess growth potential but may also entail 
+#some level of risk.
+
+#Companies in Cluster -3, originating from various locations and listed on the NYSE, receive a moderate buy 
+#or sell #recommendation, indicating potential for growth.
+
+#Cluster -4 encompasses companies from Germany and the USA listed on stock exchanges other than 
+#NYSE (AMEX and NASDAQ). They are #advised to hold or moderately buy.
+
+#In Cluster -5, companies from the UK and USA receive a partial hold and buy recommendation for their stocks
+#listed on the NYSE. #This suggests potential for growth but also entails some level of risk.
+```
+
+```{r}
+#Question-4
+#Cluster 1 - "Efficient Stability Group": This cluster comprises companies demonstrating normal levels
+#across various financial metrics, indicative of efficient and effective operation within their industry
+#and competitive landscape. Dominated by American-based companies listed on the New York Stock Exchange (NYSE),
+#they receive a balanced recommendation to hold their stock, suggesting stability and relatively low-risk investments.
+
+#Cluster 2 - "Highly Valued - Risk Zone": Companies in this cluster exhibit a high price-to-earnings (PE) ratio
+#and a low net profit margin, indicating that the market values their stock at a premium relative to current earnings.
+#Despite the low profit margin, investors are willing to pay a premium for each dollar of earnings. This cluster 
+#represents a higher level of risk, as these companies may struggle to meet market expectations, potentially leading 
+#to a future decline in stock price.
+
+#Cluster 3 - "Growth Potential - Low Risk Group": Companies in this cluster display low asset turnover and 
+#high revenue growth, signaling significant growth potential with room for operational efficiency improvement. 
+#Originating from various locations and listed on the NYSE, they receive a moderate buy or sell recommendation, 
+#suggesting promising growth potential.
+
+#Cluster 4 - "Debt-Stricken - High Risk Group": Companies in this cluster exhibit high leverage, low net profit margin, 
+#and low Return on Assets (ROA), indicating reliance on substantial debt with insufficient profitability and asset returns. 
+#This group, listed on stock exchanges other than NYSE (AMEX and NASDAQ), receives a hold or moderate buy recommendation.
+
+#Cluster 5 - "Established Profit Leaders": Companies with high market capitalization, reflecting large, well-established #entities with significant market presence and financial strength. These companies, listed on the NYSE, receive a partial
+#hold and buy recommendation, showcasing a strong market position and profitability.
+```
